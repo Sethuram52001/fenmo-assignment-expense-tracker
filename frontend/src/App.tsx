@@ -102,7 +102,11 @@ function App() {
       }
       setNextCursor(data.nextCursor || null);
     } catch (err: any) {
-      setGlobalError(err.message || 'An error occurred while fetching.');
+      if (err.message === 'Failed to fetch') {
+        setGlobalError("Network error: Unable to reach the server. Please check your connection or ensure the backend is running.");
+      } else {
+        setGlobalError(err.message || 'An error occurred while fetching.');
+      }
       setTimeout(() => setGlobalError(null), 5000);
     } finally {
       setLoading(false);
@@ -176,7 +180,11 @@ function App() {
       fetchExpenses(true);
       
     } catch (err: any) {
-      setGlobalError(err.message || 'An error occurred while submitting.');
+      if (err.message === 'Failed to fetch') {
+        setGlobalError("Network error: Unable to reach the server. Please check your connection or ensure the backend is running.");
+      } else {
+        setGlobalError(err.message || 'An error occurred while submitting.');
+      }
       setTimeout(() => setGlobalError(null), 5000);
     } finally {
       setSubmitting(false);
@@ -227,10 +235,9 @@ function App() {
             </div>
             
             <div className="form-group">
-              <label>Description</label>
+              <label>Description (Optional)</label>
               <input 
                 type="text" 
-                required
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); setFormErrors(prev => ({...prev, description: ''})) }}
                 placeholder="e.g. Morning Coffee"
