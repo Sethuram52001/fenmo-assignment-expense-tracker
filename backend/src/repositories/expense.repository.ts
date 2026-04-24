@@ -18,15 +18,26 @@ export class ExpenseRepository {
     });
   }
 
-  async findAll(category?: string, sortDesc: boolean = true) {
+  async findAll(category?: string, sortDesc: boolean = true, cursor?: string, limit: number = 20) {
     const whereClause = category ? { category } : undefined;
 
-    return prisma.expense.findMany({
+    const items = await prisma.expense.findMany({
       where: whereClause,
+      take: limit + 1,
+      cursor: cursor ? { id: cursor } : undefined,
+      skip: cursor ? 1 : 0,
       orderBy: [
         { date: sortDesc ? 'desc' : 'asc' },
         { created_at: sortDesc ? 'desc' : 'asc' }
       ]
     });
+
+    let nextCursor: string | undefined = undefined;
+    if (items.length > limit) {
+      const nextItem = items.pop();
+      nextCursor = nextItem?.id;
+    }
+
+    return { items, nextCursor };
   }
 }

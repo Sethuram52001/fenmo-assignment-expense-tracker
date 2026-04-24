@@ -28,8 +28,8 @@ export class ExpenseService {
     return { isDuplicate: false, expense };
   }
 
-  async getExpenses(category?: string, sort?: string) {
+  async getExpenses(category?: string, sort?: string, cursor?: string, limit?: number) {
     const sortDesc = sort === 'date_desc' || !sort;
-    return this.expenseRepo.findAll(category, sortDesc);
+    return this.expenseRepo.findAll(category, sortDesc, cursor, limit || 20);
   }
 }

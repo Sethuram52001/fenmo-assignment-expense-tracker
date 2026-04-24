@@ -43,9 +43,11 @@ export class ExpenseController {
     try {
       const category = req.query.category as string | undefined;
       const sort = req.query.sort as string | undefined;
+      const cursor = req.query.cursor as string | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
 
-      const expenses = await this.expenseService.getExpenses(category, sort);
-      return res.json(expenses);
+      const result = await this.expenseService.getExpenses(category, sort, cursor, limit);
+      return res.json(result);
     } catch (error) {
       console.error("Error fetching expenses:", error);
       return res.status(500).json({ error: "Internal server error" });

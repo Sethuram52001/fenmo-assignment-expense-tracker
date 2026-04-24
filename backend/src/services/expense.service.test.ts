@@ -81,21 +81,21 @@ describe('ExpenseService', () => {
 
   describe('getExpenses', () => {
     it('should call repository findAll with correct parameters', async () => {
-      mockExpenseRepo.findAll.mockResolvedValue([]);
+      mockExpenseRepo.findAll.mockResolvedValue({ items: [], nextCursor: undefined });
 
       await expenseService.getExpenses('Food', 'date_asc');
 
-      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith('Food', false); // sortDesc = false
+      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith('Food', false, undefined, 20);
     });
 
     it('should default to descending sort if sort order is missing or date_desc', async () => {
-      mockExpenseRepo.findAll.mockResolvedValue([]);
+      mockExpenseRepo.findAll.mockResolvedValue({ items: [], nextCursor: undefined });
 
       await expenseService.getExpenses(undefined, 'date_desc');
-      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith(undefined, true);
+      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith(undefined, true, undefined, 20);
 
       await expenseService.getExpenses(undefined, undefined);
-      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith(undefined, true);
+      expect(mockExpenseRepo.findAll).toHaveBeenCalledWith(undefined, true, undefined, 20);
     });
   });
 });
