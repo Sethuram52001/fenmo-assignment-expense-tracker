@@ -23,9 +23,10 @@ export class ExpenseRepository {
 
     return prisma.expense.findMany({
       where: whereClause,
-      orderBy: {
-        date: sortDesc ? 'desc' : 'asc'
-      }
+      orderBy: [
+        { date: sortDesc ? 'desc' : 'asc' },
+        { created_at: sortDesc ? 'desc' : 'asc' }
+      ]
     });
   }
 }
