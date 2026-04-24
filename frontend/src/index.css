@@ -132,6 +132,24 @@ input:focus, select:focus {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.input-error {
+  border-color: var(--danger-color);
+}
+
+.input-error:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.error-text {
+  display: block;
+  color: var(--danger-color);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease-out;
+}
+
 button[type="submit"] {
   width: 100%;
   background: var(--primary-color);

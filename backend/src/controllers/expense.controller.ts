@@ -4,12 +4,12 @@ import { z } from 'zod';
 
 const createExpenseSchema = z.object({
   amount: z.number().int().positive("Amount must be a positive integer"),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().optional().default(""),
+  category: z.string().min(1, "Category is required").max(50, "Category too long"),
+  description: z.string().max(255, "Description cannot exceed 255 characters").optional().default(""),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Invalid date format",
   }),
-});
+}).strict();
 
 export class ExpenseController {
   private expenseService: ExpenseService;

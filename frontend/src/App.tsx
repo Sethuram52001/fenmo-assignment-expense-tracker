@@ -32,11 +32,14 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'Other': <MoreHorizontal size={18} />
 };
 
+import SummaryView from './components/SummaryView';
+
 function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
   // Filter & Sort State
   const [filterCategory, setFilterCategory] = useState('');
@@ -57,7 +60,7 @@ function App() {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setGlobalError(null);
       
       const queryParams = new URLSearchParams();
       if (filterCategory) queryParams.append('category', filterCategory);
@@ -69,8 +72,8 @@ function App() {
       const data = await res.json();
       setExpenses(data);
     } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching.');
-      setTimeout(() => setError(null), 5000);
+      setGlobalError(err.message || 'An error occurred while fetching.');
+      setTimeout(() => setGlobalError(null), 5000);
     } finally {
       setLoading(false);
     }
@@ -80,9 +83,21 @@ function App() {
     e.preventDefault();
     if (submitting) return;
 
+    // Inline Validation
+    const errors: Record<string, string> = {};
+    if (parseFloat(amount) <= 0) errors.amount = 'Amount must be strictly positive';
+    if (!category) errors.category = 'Category is required';
+    if (description.length > 255) errors.description = 'Description cannot exceed 255 characters';
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
     try {
       setSubmitting(true);
-      setError(null);
+      setGlobalError(null);
+      setFormErrors({});
 
       const idempotencyKey = `req-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       const amountInPaise = Math.round(parseFloat(amount) * 100);
@@ -101,7 +116,10 @@ function App() {
         })
       });
 
-      if (!res.ok) throw new Error('Failed to add expense');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || errorData.errors?.[0]?.message || 'Failed to add expense');
+      }
       
       setAmount('');
       setCategory('');
@@ -110,8 +128,8 @@ function App() {
       fetchExpenses();
       
     } catch (err: any) {
-      setError(err.message || 'An error occurred while submitting.');
-      setTimeout(() => setError(null), 5000);
+      setGlobalError(err.message || 'An error occurred while submitting.');
+      setTimeout(() => setGlobalError(null), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -139,9 +157,11 @@ function App() {
                 min="0.01"
                 required
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => { setAmount(e.target.value); setFormErrors(prev => ({...prev, amount: ''})) }}
                 placeholder="0.00"
+                className={formErrors.amount ? 'input-error' : ''}
               />
+              {formErrors.amount && <span className="error-text">{formErrors.amount}</span>}
             </div>
 
             <div className="form-group">
@@ -149,11 +169,13 @@ function App() {
               <select 
                 required
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => { setCategory(e.target.value); setFormErrors(prev => ({...prev, category: ''})) }}
+                className={formErrors.category ? 'input-error' : ''}
               >
                 <option value="" disabled>Select a category...</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {formErrors.category && <span className="error-text">{formErrors.category}</span>}
             </div>
             
             <div className="form-group">
@@ -162,9 +184,11 @@ function App() {
                 type="text" 
                 required
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); setFormErrors(prev => ({...prev, description: ''})) }}
                 placeholder="e.g. Morning Coffee"
+                className={formErrors.description ? 'input-error' : ''}
               />
+              {formErrors.description && <span className="error-text">{formErrors.description}</span>}
             </div>
             
             <div className="form-group">
@@ -191,6 +215,7 @@ function App() {
             <div className="stat-label">Total Visible Spent</div>
             <div className="stat-value">₹{(totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
           </div>
+          <SummaryView expenses={expenses} />
         </div>
 
         <div className="list-section">
@@ -245,10 +270,10 @@ function App() {
         </div>
       </main>
 
-      {error && (
+      {globalError && (
         <div className="toast">
           <AlertCircle size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.5rem' }}/>
-          {error}
+          {globalError}
         </div>
       )}
     </div>
