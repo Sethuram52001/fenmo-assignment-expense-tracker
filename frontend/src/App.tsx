@@ -37,13 +37,18 @@ import SummaryView from './components/SummaryView';
 function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Filter & Sort State
-  const [filterCategory, setFilterCategory] = useState('');
-  const [sortOrder, setSortOrder] = useState('date_desc');
+  // Initialize state from URL params to support persistence on refresh
+  const searchParams = new URLSearchParams(window.location.search);
+  const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || '');
+  const [sortOrder, setSortOrder] = useState(searchParams.get('sort') || 'date_desc');
+  
+  const observerTarget = React.useRef(null);
 
   // Form State
   const [amount, setAmount] = useState('');
@@ -54,30 +59,73 @@ function App() {
   const categories = Object.keys(CATEGORY_ICONS);
 
   useEffect(() => {
-    fetchExpenses();
+    // Sync state changes to URL
+    const url = new URL(window.location.href);
+    if (filterCategory) url.searchParams.set('category', filterCategory);
+    else url.searchParams.delete('category');
+    
+    if (sortOrder !== 'date_desc') url.searchParams.set('sort', sortOrder);
+    else url.searchParams.delete('sort');
+    
+    window.history.replaceState({}, '', url);
+
+    fetchExpenses(true);
   }, [filterCategory, sortOrder]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (reset = false) => {
+    if (!navigator.onLine) {
+      setGlobalError("You appear to be offline. Please check your internet connection.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (reset) setLoading(true);
+      else setLoadingMore(true);
+
       setGlobalError(null);
       
       const queryParams = new URLSearchParams();
       if (filterCategory) queryParams.append('category', filterCategory);
       queryParams.append('sort', sortOrder);
+      if (!reset && nextCursor) queryParams.append('cursor', nextCursor);
       
       const res = await fetch(`${API_URL}/expenses?${queryParams.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch expenses from server');
       
       const data = await res.json();
-      setExpenses(data);
+      
+      if (reset) {
+        setExpenses(data.items);
+      } else {
+        setExpenses(prev => [...prev, ...data.items]);
+      }
+      setNextCursor(data.nextCursor || null);
     } catch (err: any) {
       setGlobalError(err.message || 'An error occurred while fetching.');
       setTimeout(() => setGlobalError(null), 5000);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && nextCursor && !loading && !loadingMore) {
+          fetchExpenses(false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) observer.observe(observerTarget.current);
+
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+  }, [observerTarget.current, nextCursor, loading, loadingMore]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -125,7 +173,7 @@ function App() {
       setCategory('');
       setDescription('');
       
-      fetchExpenses();
+      fetchExpenses(true);
       
     } catch (err: any) {
       setGlobalError(err.message || 'An error occurred while submitting.');
@@ -265,6 +313,13 @@ function App() {
                   </div>
                 </div>
               ))
+            )}
+            
+            {/* Intersection Observer Target for Infinite Scroll */}
+            {nextCursor && (
+              <div ref={observerTarget} style={{ padding: '1rem', textAlign: 'center' }}>
+                {loadingMore ? <div className="loader" style={{ borderColor: 'var(--primary-color)', margin: '0 auto' }}></div> : null}
+              </div>
             )}
           </div>
         </div>
